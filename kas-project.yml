@@ -1,0 +1,39 @@
+header:
+  version: 14
+
+# Заменяет: DISTRO=openstlinux-weston MACHINE=stm32mp1
+machine: stm32mp1
+distro: openstlinux-weston
+target: st-image-weston  # Заменяет: bitbake st-image-weston
+
+repos:
+  # Подключает ваш локальный слой с драйверами дисплея
+  meta-custom-display:
+
+  # Заменяет: git clone ... -b openstlinux-6.1-yocto-mickledore
+  meta-st-odyssey:
+    url: "https://github.com/Seeed-Studio/meta-st-odyssey.git"
+    refspec: "openstlinux-6.1-yocto-mickledore"
+
+  # Заменяет: repo init -u ... oe-manifest.git и repo sync
+  # kas сам скачает манифест от ST и развернет все официальные слои в папку layers/
+  oe-manifest:
+    url: "https://github.com/STMicroelectronics/oe-manifest.git"
+    refspec: "refs/tags/openstlinux-6.1-yocto-mickledore-mpu-v24.06.26"
+    layers:
+      meta-st/meta-st-stm32mp:
+      meta-st/meta-st-openstlinux:
+      meta-st/meta-st-layers:
+
+# Заменяет логику работы скрипта envsetup.sh и ручную правку local.conf
+local_conf_header:
+  st-specific-settings: |
+    # Автоматически принимаем EULA (то, что запрашивает envsetup.sh)
+    ACCEPT_EULA_stm32mp1 = "1"
+    
+    # Переопределяем Device Tree на ваше кастомное с поддержкой DSI дисплея
+    ST_KERNEL_DEVICETREE = "stm32mp157c-odyssey-rpi"
+
+    # Сюда вы можете добавить любые другие настройки, которые хотели внедрить через envsetup.sh
+    # Например:
+    # IMAGE_INSTALL:append = " my-custom-package"

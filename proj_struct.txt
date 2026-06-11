@@ -1,0 +1,14 @@
+my-kas-project/                  <-- Корень вашего Git-репозитория
+├── .gitignore                   <-- Игнорирует папки /build/ и /layers/
+├── README.md                    <-- Инструкция по сборке через kas-container
+├── kas-project.yml              <-- Конфигурация слоев, платформ и ACCEPT_EULA
+└── meta-custom-display/         <-- Ваш кастомный слой доработок
+    ├── conf/
+    │   └── layer.conf
+    └── recipes-kernel/
+        └── linux/
+            ├── linux-stm32mp_%.bbappend
+            └── files/
+                ├── stm32mp157c-odyssey-rpi.dts   # Ваш новый или измененный DTS файл
+                ├── 0001-rpi-display-drivers.patch  <-- Патч (содержит .c, .h, .dts и Makefile)
+                └── rpi-display.cfg                <-- Три опции CONFIG_*=y

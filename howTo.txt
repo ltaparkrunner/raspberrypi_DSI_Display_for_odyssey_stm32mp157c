@@ -1,0 +1,82 @@
+The changes are in files: 
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/drivers/gpu/drm/
+                                    drm_of.c -- the function  drm_of_find_pane_or_bridge_2()
+                                    panel/panel-simple.c -- two places definition of raspberrypi-7inch
+                                    stm/ltdc.c -- call function : drm_of_find_pane_or_bridge_2()
+
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/drivers/gpu/
+                                    of/property.c -- the fnction of_graph_get_remote_node_2() definition
+
+
+            also some changes in files: 
+                                    bridge/tc358762.c
+                                    stm/drv.c
+                                    stm/dw_mipi_dsi-stm.c
+    also:
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/
+                                    include/drm/drm_of.h    description of func drm_of_find_panel_or_bridge_2
+                                    include/linux/of_graph.h description of func of_graph_get_remote_node_2()
+
+                                    arch/arm/boot/dts/stm32mp157c-odyssey-som.dtsi several lines about gpu_reserved and gpu
+    in   
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/
+                                    kernel-build-artifacts/arch/arm/include/config/auto.conf 
+                                            CONFIG_DRM_PANEL_RASPBERRYPI_TOUCHSCREEN=y                              
+                                            CONFIG_REGULATOR_RASPBERRYPI_TOUCHSCREEN_ATTINY=y
+                                            CONFIG_DRM_TOSHIBA_TC358762=y
+    what are they for : gpu/drm/drm_of.c:	remote = of_graph_get_remote_node_2(np, port, endpoint, dev);
+                        of/property.c:struct device_node *of_graph_get_remote_node_2(const struct device_node *node,
+                                                                u32 port, u32 endpoint, struct device *dev);
+
+
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/drivers/gpu/drm/drm_of.c
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/drivers/gpu/drm/panel/panel-simple.c
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/drivers/gpu/drm/stm/ltdc.c
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/drivers/gpu/of/property.c
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/include/drm/drm_of.h
+    build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/include/linux/of_graph.h
+
+
+"Yes, I have ready Device Tree file, the exchanges for kernel Kconfigs and
+ edited panel-simple.c, tc358762.c and added panel-raspberrypi-touchscreen.c files, 
+ plus edited layers/meta-st/scripts/envsetup.sh file."
+
+
+
+ old.yaml
+
+ header:
+  version: 14
+
+# Указываем целевую машину и дистрибутив на основе README от Seeed Studio
+machine: stm32mp1
+distro: openstlinux-weston
+target: st-image-weston
+
+repos:
+  # 1. Ваш собственный слой (путь относительно корня этого репозитория)
+  meta-custom-display:
+
+  # 2. Слой Seeed Studio Odyssey
+  meta-st-odyssey:
+    url: "https://github.com/Seeed-Studio/meta-st-odyssey.git"
+    refspec: "openstlinux-6.1-yocto-mickledore"
+
+  # 3. Официальный манифест STMicroelectronics OpenSTLinux
+  # KAS умеет парсить файлы манифестов формата Android repo tool
+  oe-manifest:
+    url: "https://github.com"
+    refspec: "refs/tags/openstlinux-6.1-yocto-mickledore-mpu-v24.06.26"
+    layers:
+      # Здесь перечисляются слои из манифеста, которые вам нужны, например:
+      meta-st/meta-st-stm32mp:
+      meta-st/meta-st-openstlinux:
+
+# Настройки для local.conf
+local_conf_header:
+  standard-settings: |
+    # Принимаем лицензионное соглашение ST (требуется для сборки GPU)
+    ACCEPT_EULA_stm32mp1 = "1"
+    # Общие папки для ускорения повторных сборок (вынесите за пределы папки проекта)
+    DL_DIR = "${TOPDIR}/../downloads"
+    SSTATE_DIR = "${TOPDIR}/../sstate-cache"

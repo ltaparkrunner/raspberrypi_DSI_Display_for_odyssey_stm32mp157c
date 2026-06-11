@@ -1,0 +1,240 @@
+diff --git a/drivers/gpu/drm/drm_of.c b/drivers/gpu/drm/drm_of.c
+index 7bbcb999b..511ceb35d 100644
+--- a/drivers/gpu/drm/drm_of.c
++++ b/drivers/gpu/drm/drm_of.c
+@@ -284,6 +284,64 @@ int drm_of_find_panel_or_bridge(const struct device_node *np,
+ }
+ EXPORT_SYMBOL_GPL(drm_of_find_panel_or_bridge);
+ 
++
++///////////////////////////////////
++int drm_of_find_panel_or_bridge_2(const struct device_node *np,
++				int port, int endpoint,
++				struct drm_panel **panel,
++				struct drm_bridge **bridge,
++                struct device *dev)
++{
++	int ret = -EPROBE_DEFER;
++	struct device_node *remote;
++
++	if (!panel && !bridge)
++		return -EINVAL;
++	if (panel)
++		*panel = NULL;
++
++	/*
++	 * of_graph_get_remote_node() produces a noisy error message if port
++	 * node isn't found and the absence of the port is a legit case here,
++	 * so at first we silently check whether graph presents in the
++	 * device-tree node.
++	 */
++	if (!of_graph_is_present(np)) {
++        dev_err(dev, "drm_of_find_panel_or_bridge_2 !of_graph_is_present(np)");
++		return -ENODEV;
++    }
++	remote = of_graph_get_remote_node_2(np, port, endpoint, dev);
++    dev_err(dev, "drm_of_find_panel_or_bridge_2 after of_graph_get_remote_node");
++	if (!remote)
++		return -ENODEV;
++
++	if (panel) {
++		*panel = of_drm_find_panel(remote);
++		if (!IS_ERR(*panel))
++			ret = 0;
++		else
++			*panel = NULL;
++	}
++
++	/* No panel found yet, check for a bridge next. */
++	if (bridge) {
++		if (ret) {
++			*bridge = of_drm_find_bridge(remote);
++			if (*bridge)
++				ret = 0;
++		} else {
++			*bridge = NULL;
++		}
++
++	}
++
++	of_node_put(remote);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(drm_of_find_panel_or_bridge_2);
++//////////////////////////////////
++
++
+ enum drm_of_lvds_pixels {
+ 	DRM_OF_LVDS_EVEN = BIT(0),
+ 	DRM_OF_LVDS_ODD = BIT(1),
+diff --git a/drivers/gpu/drm/panel/panel-simple.c b/drivers/gpu/drm/panel/panel-simple.c
+index 92401e1f5..70225d3d2 100644
+--- a/drivers/gpu/drm/panel/panel-simple.c
++++ b/drivers/gpu/drm/panel/panel-simple.c
+@@ -3223,6 +3223,59 @@ static const struct panel_desc qishenglong_gopher2b_lcd = {
+ 	.connector_type = DRM_MODE_CONNECTOR_DPI,
+ };
+ 
++static const struct drm_display_mode raspberrypi_7inch_mode = {
++	.clock = 30000,
++	.hdisplay = 800,
++	.hsync_start = 800 + 131,
++	.hsync_end = 800 + 131 + 2,
++	.htotal = 800 + 131 + 2 + 45,
++	.vdisplay = 480,
++	.vsync_start = 480 + 7,
++	.vsync_end = 480 + 7 + 2,
++	.vtotal = 480 + 7 + 2 + 22,
++	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
++};
++
++static const struct panel_desc raspberrypi_7inch = {
++	.modes = &raspberrypi_7inch_mode,
++	.num_modes = 1,
++	.bpc = 8,
++	.size = {
++		.width = 154,
++		.height = 86,
++	},
++	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
++//	.connector_type = DRM_MODE_CONNECTOR_DSI,
++    .connector_type = DRM_MODE_CONNECTOR_DPI,
++};
++
++static const struct display_timing rocktech_rk043fn48h_timing = {
++	.pixelclock = { 6000000, 9000000, 12000000 },
++	.hactive = { 480, 480, 480 },
++	.hback_porch = { 8, 43, 43 },
++	.hfront_porch = { 2, 8, 10 },
++	.hsync_len = { 1, 1, 1 },
++	.vactive = { 272, 272, 272 },
++	.vback_porch = { 2, 12, 26 },
++	.vfront_porch = { 1, 4, 4 },
++	.vsync_len = { 1, 10, 10 },
++	.flags = DISPLAY_FLAGS_VSYNC_LOW | DISPLAY_FLAGS_HSYNC_LOW |
++		 DISPLAY_FLAGS_DE_HIGH | DISPLAY_FLAGS_PIXDATA_POSEDGE |
++		 DISPLAY_FLAGS_SYNC_POSEDGE,
++};
++
++static const struct panel_desc rocktech_rk043fn48h = {
++	.timings = &rocktech_rk043fn48h_timing,
++	.num_timings = 1,
++	.bpc = 8,
++	.size = {
++		.width = 95,
++		.height = 54,
++	},
++	.bus_format = MEDIA_BUS_FMT_RGB888_1X24,
++	.connector_type = DRM_MODE_CONNECTOR_DPI,
++};
++
+ static const struct display_timing rocktech_rk070er9427_timing = {
+ 	.pixelclock = { 26400000, 33300000, 46800000 },
+ 	.hactive = { 800, 800, 800 },
+@@ -4255,6 +4308,12 @@ static const struct of_device_id platform_of_match[] = {
+ 	}, {
+ 		.compatible = "qishenglong,gopher2b-lcd",
+ 		.data = &qishenglong_gopher2b_lcd,
++	}, {
++		.compatible = "raspberrypi,7inch-dsi",
++		.data = &raspberrypi_7inch,
++	}, {
++		.compatible = "rocktech,rk043fn48h",
++		.data = &rocktech_rk043fn48h,
+ 	}, {
+ 		.compatible = "rocktech,rk070er9427",
+ 		.data = &rocktech_rk070er9427,
+diff --git a/drivers/gpu/drm/stm/ltdc.c b/drivers/gpu/drm/stm/ltdc.c
+index 2be0b1a48..25b5bc528 100644
+--- a/drivers/gpu/drm/stm/ltdc.c
++++ b/drivers/gpu/drm/stm/ltdc.c
+@@ -2387,8 +2387,10 @@ int ltdc_load(struct drm_device *ddev)
+ 
+ 	/* Get endpoints if any */
+ 	for (i = 0; i < nb_endpoints; i++) {
+-		ret = drm_of_find_panel_or_bridge(np, 0, i, &panel, &bridge);
+-
++		ret = drm_of_find_panel_or_bridge_2(np, 0, i, &panel, &bridge, dev);
++        if (ret == -ENODEV) 
++            dev_err(dev, "ltdc_load after drm_of_find_panel_or_bridge: -ENODEV");
++        else dev_err(dev, "ltdc_load after drm_of_find_panel_or_bridge: %d, ret");
+ 		/*
+ 		 * If at least one endpoint is -ENODEV, continue probing,
+ 		 * else if at least one endpoint returned an error
+diff --git a/drivers/of/property.c b/drivers/of/property.c
+index da5d71219..f8d925b3a 100644
+--- a/drivers/of/property.c
++++ b/drivers/of/property.c
+@@ -863,6 +863,43 @@ struct device_node *of_graph_get_remote_node(const struct device_node *node,
+ }
+ EXPORT_SYMBOL(of_graph_get_remote_node);
+ 
++///////////////////////////////////////////////////////
++
++struct device_node *of_graph_get_remote_node_2(const struct device_node *node,
++					     u32 port, u32 endpoint, struct device *dev)
++{
++	struct device_node *endpoint_node, *remote;
++
++	endpoint_node = of_graph_get_endpoint_by_regs(node, port, endpoint);
++	if (!endpoint_node) {
++		pr_debug("no valid endpoint (%d, %d) for node %pOF\n",
++			 port, endpoint, node);
++        dev_err(dev, "no valid endpoint (%d, %d) for node %pOF\n",
++			 port, endpoint, node);
++		return NULL;
++	}
++
++	remote = of_graph_get_remote_port_parent(endpoint_node);
++	of_node_put(endpoint_node);
++	if (!remote) {
++		pr_debug("no valid remote node\n");
++        dev_err(dev, "no valid remote node\n");
++		return NULL;
++	}
++
++	if (!of_device_is_available(remote)) {
++		pr_debug("not available for remote node\n");
++        dev_err(dev, "not available for remote node\n");
++		of_node_put(remote);
++		return NULL;
++	}
++
++	return remote;
++}
++EXPORT_SYMBOL(of_graph_get_remote_node_2);
++
++////////////////////////////////////////////
++
+ static struct fwnode_handle *of_fwnode_get(struct fwnode_handle *fwnode)
+ {
+ 	return of_fwnode_handle(of_node_get(to_of_node(fwnode)));
+diff --git a/include/drm/drm_of.h b/include/drm/drm_of.h
+index 10ab58c40..aaed0c6bc 100644
+--- a/include/drm/drm_of.h
++++ b/include/drm/drm_of.h
+@@ -47,6 +47,11 @@ int drm_of_find_panel_or_bridge(const struct device_node *np,
+ 				int port, int endpoint,
+ 				struct drm_panel **panel,
+ 				struct drm_bridge **bridge);
++int drm_of_find_panel_or_bridge_2(const struct device_node *np,
++				int port, int endpoint,
++				struct drm_panel **panel,
++				struct drm_bridge **bridge,
++                struct device *dev);
+ int drm_of_lvds_get_dual_link_pixel_order(const struct device_node *port1,
+ 					  const struct device_node *port2);
+ int drm_of_lvds_get_data_mapping(const struct device_node *port);
+diff --git a/include/linux/of_graph.h b/include/linux/of_graph.h
+index 4d7756087..7d29c85e0 100644
+--- a/include/linux/of_graph.h
++++ b/include/linux/of_graph.h
+@@ -55,6 +55,8 @@ struct device_node *of_graph_get_remote_port_parent(
+ struct device_node *of_graph_get_remote_port(const struct device_node *node);
+ struct device_node *of_graph_get_remote_node(const struct device_node *node,
+ 					     u32 port, u32 endpoint);
++struct device_node *of_graph_get_remote_node_2(const struct device_node *node,
++					     u32 port, u32 endpoint, struct device *dev);
+ #else
+ 
+ static inline bool of_graph_is_present(const struct device_node *node)
