@@ -53,6 +53,13 @@ machine: stm32mp1
 distro: openstlinux-weston
 target: st-image-weston
 
+
+
+
+
+
+ls /home/alex-m/wrk/myproj/odyssey/kas-layer/
+
 repos:
   # 1. Ваш собственный слой (путь относительно корня этого репозитория)
   meta-custom-display:
