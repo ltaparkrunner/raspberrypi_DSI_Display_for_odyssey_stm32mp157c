@@ -1,3 +1,10 @@
+start it so : 
+    alex-m@alex-note:~/wrk/myproj/odyssey/dsi_driver$ wget -qO kas-container https://raw.githubusercontent.com/siemens/kas/refs/tags/5.1/kas-container
+    alex-m@alex-note:~/wrk/myproj/odyssey/dsi_driver$ chmod +x kas-container
+    
+    alex-m@alex-note:~/wrk/myproj/odyssey/dsi_driver$ cd ../kas-layer/
+    alex-m@alex-note:~/wrk/myproj/odyssey/kas-layer$ KAS_IMAGE_VERSION=4.4 ../dsi_driver/kas-container build kas-project.yml
+
 The changes are in files: 
     build-openstlinuxweston-stm32mp1/tmp-glibc/work-shared/stm32mp1/kernel-source/drivers/gpu/drm/
                                     drm_of.c -- the function  drm_of_find_pane_or_bridge_2()
